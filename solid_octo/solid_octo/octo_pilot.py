@@ -6,18 +6,15 @@ from tf_transformations import quaternion_about_axis
 
 from geometry_msgs.msg import Twist, TransformStamped
 from nav_msgs.msg import Odometry
+from sensor_msgs.msg import Joy
 
 import serial
 from math import sin, cos, pi
 
 
-class VelocityController(Node):
-    """
-    A ROS interface for the robot
-    """
-
+class OctoPilot(Node):
     def __init__(self):
-        super().__init__("octo_interface")
+        super().__init__("octo_pilot")
         # Create serial communication to Pico
         self.pico_msngr = serial.Serial("/dev/ttyACM0", 115200)
         self.listen_pico_msg_timer = self.create_timer(0.015, self.listen_pico_msg)
@@ -26,6 +23,12 @@ class VelocityController(Node):
             topic="cmd_vel",
             msg_type=Twist,
             callback=self.set_vel,
+            qos_profile=1,
+        )
+        self.joy_subr = self.create_subscription(
+            topic="joy",
+            msg_type=Joy,
+            callback=self.get_z,
             qos_profile=1,
         )
         # Create odometry publisher
@@ -43,6 +46,7 @@ class VelocityController(Node):
         self.x = 0.0  # in odom frame
         self.y = 0.0
         self.th = 0.0
+        self.z_dir = 0
         self.prev_ts = self.get_clock().now()
         self.curr_ts = self.get_clock().now()
         # constants
@@ -61,10 +65,14 @@ class VelocityController(Node):
             f"Octo's real velocity\nlinear: {self.lin_vel}, angular: {self.ang_vel}"
         )
 
+    def get_z(self, msg):
+        self.z_dir = int(msg.axes[-1])
+        self.get_logger().debug(f"z axis direction: {self.z_dir}")
+
     def set_vel(self, msg):
         targ_lin = msg.linear.x
         targ_ang = msg.angular.z
-        self.pico_msngr.write(f"{targ_lin},{targ_ang}\n".encode("utf-8"))
+        self.pico_msngr.write(f"{targ_lin},{targ_ang},{self.z_dir}\n".encode("utf-8"))
         self.get_logger().debug(
             f"Set Octo's target velocity\nlinear: {targ_lin}, angular: {targ_ang}"
         )
@@ -116,9 +124,9 @@ class VelocityController(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    velocity_controller = VelocityController()
-    rclpy.spin(velocity_controller)
-    velocity_controller.destroy_node()
+    octo_pilot = OctoPilot()
+    rclpy.spin(octo_pilot)
+    octo_pilot.destroy_node()
     rclpy.shutdown()
 
 
