@@ -47,6 +47,7 @@ class OctoPilot(Node):
         self.y = 0.0
         self.th = 0.0
         self.z_dir = 0
+        self.x_dir = 0
         self.prev_ts = self.get_clock().now()
         self.curr_ts = self.get_clock().now()
         # constants
@@ -67,12 +68,13 @@ class OctoPilot(Node):
 
     def get_z(self, msg):
         self.z_dir = int(msg.axes[-1])
+        self.x_dir = int(msg.axes[-2])
         self.get_logger().debug(f"z axis direction: {self.z_dir}")
 
     def set_vel(self, msg):
         targ_lin = msg.linear.x
         targ_ang = msg.angular.z
-        self.pico_msngr.write(f"{targ_lin},{targ_ang},{self.z_dir}\n".encode("utf-8"))
+        self.pico_msngr.write(f"{targ_lin},{targ_ang},{self.z_dir},{self.x_dir}\n".encode("utf-8"))
         self.get_logger().debug(
             f"Set Octo's target velocity\nlinear: {targ_lin}, angular: {targ_ang}"
         )
@@ -132,3 +134,4 @@ def main(args=None):
 
 if __name__ == "__main__":
     main()
+
