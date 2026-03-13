@@ -1,0 +1,24 @@
+twist_mux:
+  ros__parameters:
+    # Set to true for Jazzy/Nav2 compatibility
+    use_stamped: true
+    
+    topics:
+      navigation:
+        topic: "cmd_vel_nav"
+        timeout: 0.5
+        priority: 10
+      teleop:
+        topic: "cmd_vel_joy"
+        timeout: 0.5
+        priority: 100
+      emergency:
+        topic: "cmd_vel_emergency"
+        timeout: 0.5
+        priority: 255
+
+    locks:
+      pause:
+        topic: "pause_navigation"
+        timeout: 0.0
+        priority: 100

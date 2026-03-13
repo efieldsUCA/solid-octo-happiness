@@ -84,7 +84,7 @@ def generate_launch_description():
             sim_time_arg,
             # diff_drive_node,
             octo_pilot_node,
-            rplidar_launch,
+#            rplidar_launch,
             launch_teleop_twist_joy,
             footprint_static_tf_node,
             lidar_static_tf_node,

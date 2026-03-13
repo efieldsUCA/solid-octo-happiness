@@ -16,7 +16,7 @@ class OctoPilot(Node):
     def __init__(self):
         super().__init__("octo_pilot")
         # Create serial communication to Pico
-        self.pico_msngr = serial.Serial("/dev/ttyACM0", 115200)
+        self.pico_msngr = serial.Serial("/dev/ttyACM0", 115200, timeout=0.01)
         self.listen_pico_msg_timer = self.create_timer(0.015, self.listen_pico_msg)
         # Create target velocity subscriber
         self.targ_vel_subr = self.create_subscription(
@@ -50,6 +50,9 @@ class OctoPilot(Node):
         self.x_dir = 0
         self.prev_ts = self.get_clock().now()
         self.curr_ts = self.get_clock().now()
+        self._stop_time = None       # when last zero cmd was received
+        self._STOP_WINDOW = 1.0      # seconds to apply strict deadband after stop
+        self._STOP_DEADBAND = 0.08   # m/s or rad/s threshold during braking window
         # constants
         self.GROUND_CLEARANCE = 0.05
         self.get_logger().info("Octo driver is up.")
@@ -60,8 +63,22 @@ class OctoPilot(Node):
                 self.pico_msngr.readline().decode("utf-8").rstrip().split(",")
             )  # actual linear and angular vel
             if len(vels) == 2:
-                self.lin_vel = float(vels[0])
-                self.ang_vel = float(vels[1])
+                try:
+                    lin = float(vels[0])
+                    ang = float(vels[1])
+                except ValueError:
+                    lin = 0.0
+                    ang = 0.0
+                # Apply braking-window deadband: zero out coast spin-down after stop command
+                if self._stop_time is not None:
+                    elapsed = (self.get_clock().now() - self._stop_time).nanoseconds * 1e-9
+                    if elapsed < self._STOP_WINDOW:
+                        if abs(lin) < self._STOP_DEADBAND:
+                            lin = 0.0
+                        if abs(ang) < self._STOP_DEADBAND:
+                            ang = 0.0
+                self.lin_vel = lin
+                self.ang_vel = ang
         self.get_logger().debug(
             f"Octo's real velocity\nlinear: {self.lin_vel}, angular: {self.ang_vel}"
         )
@@ -74,6 +91,8 @@ class OctoPilot(Node):
     def set_vel(self, msg):
         targ_lin = msg.linear.x
         targ_ang = msg.angular.z
+        if targ_lin == 0.0 and targ_ang == 0.0:
+            self._stop_time = self.get_clock().now()
         self.pico_msngr.write(f"{targ_lin},{targ_ang},{self.z_dir},{self.x_dir}\n".encode("utf-8"))
         self.get_logger().debug(
             f"Set Octo's target velocity\nlinear: {targ_lin}, angular: {targ_ang}"

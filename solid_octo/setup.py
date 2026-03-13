@@ -20,6 +20,7 @@ setup(
             glob(os.path.join("launch", "*.py")),
         ),
     ],
+    package_data={"solid_octo": ["colors.json"]},
     install_requires=["setuptools"],
     zip_safe=True,
     maintainer="robopi",
@@ -35,6 +36,9 @@ setup(
         "console_scripts": [
             "diff_drive_controller = solid_octo.diff_drive_controller:main",
             "octo_pilot = solid_octo.octo_pilot:main",
+            "detector_node = solid_octo.detector_node:main",
+	    "sorting_master = solid_octo.sorting_master:main",
+            "waypoint_navigator = solid_octo.waypoint_navigator:main",
         ],
     },
 )
